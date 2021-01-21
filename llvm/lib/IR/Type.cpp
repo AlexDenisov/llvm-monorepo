@@ -522,7 +522,63 @@ bool StructType::isLayoutIdentical(StructType *Other) const {
   if (isPacked() != Other->isPacked())
     return false;
 
-  return elements() == Other->elements();
+  if (elements().size() != Other->elements().size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < elements().size(); i++) {
+    Type *Element = getElementType(i);
+    Type *OtherElement = Other->getElementType(i);
+
+    if (Element->getTypeID() != OtherElement->getTypeID()) {
+      return false;
+    }
+
+    switch (Element->getTypeID()) {
+    // Invalid struct types, treat as equal
+    case VoidTyID:
+    case LabelTyID:
+    case MetadataTyID:
+    case TokenTyID:
+    case FunctionTyID:
+      continue;
+
+    // These are all 'singleton' types, no need to compare
+    case HalfTyID:
+    case FloatTyID:
+    case DoubleTyID:
+    case X86_FP80TyID:
+    case FP128TyID:
+    case PPC_FP128TyID:
+    case X86_MMXTyID:
+      continue;
+
+    /// All pointers are equal from the layout point of view
+    /// TODO: Shall we compare address space in this case?
+    case PointerTyID:
+      continue;
+
+    case IntegerTyID: {
+      if (Element != OtherElement) {
+        return false;
+      }
+    }break;
+
+    case StructTyID: {
+      if (!cast<StructType>(Element)->isLayoutIdentical(cast<StructType>(OtherElement))) {
+        return false;
+      }
+    }break;
+
+    /// TODO: These should be checked recursively the same way as structs?
+    case ArrayTyID:
+    case VectorTyID:
+      continue;
+    }
+
+  }
+
+  return true;
 }
 
 StructType *Module::getTypeByName(StringRef Name) const {

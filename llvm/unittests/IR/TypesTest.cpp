@@ -34,4 +34,39 @@ TEST(TypesTest, LayoutIdenticalEmptyStructs) {
   EXPECT_TRUE(Foo->isLayoutIdentical(Bar));
 }
 
+TEST(TypesTest, LayoutIdenticalPackedStructs) {
+  LLVMContext C;
+  IntegerType *Int32 = IntegerType::get(C, 32);
+
+  StructType *FooPacked = StructType::create({ Int32, Int32 }, "FooPacked", true);
+  StructType *FooNotPacked = StructType::create({ Int32, Int32 }, "FooNotPacked", false);
+  StructType *BarPacked = StructType::create({ Int32, Int32 }, "BarPacked", true);
+  EXPECT_TRUE(FooPacked->isLayoutIdentical(BarPacked));
+  EXPECT_FALSE(FooPacked->isLayoutIdentical(FooNotPacked));
+  EXPECT_FALSE(BarPacked->isLayoutIdentical(FooNotPacked));
+}
+
+TEST(TypesTest, LayoutIdenticalNestedStructs) {
+  LLVMContext C;
+  IntegerType *Int32 = IntegerType::get(C, 32);
+
+  StructType *Foo = StructType::create({ Int32, Int32 }, "Foo");
+  StructType *Bar = StructType::create({ Int32, Int32 }, "Bar");
+  EXPECT_TRUE(Foo->isLayoutIdentical(Bar));
+
+  StructType *FooWrapped = StructType::create({ Foo }, "FooWrapped");
+  StructType *BarWRapped = StructType::create({ Bar }, "BarWrapped");
+  EXPECT_TRUE(FooWrapped->isLayoutIdentical(BarWRapped));
+}
+
+TEST(TypesTest, LayoutIdenticalPointers) {
+  LLVMContext C;
+  PointerType *Ptr1 = PointerType::get(IntegerType::get(C, 8), 0);
+  PointerType *Ptr2 = PointerType::get(IntegerType::get(C, 16), 0);
+
+  StructType *Foo = StructType::create({ Ptr1 }, "Foo");
+  StructType *Bar = StructType::create({ Ptr2 }, "Bar");
+  EXPECT_TRUE(Foo->isLayoutIdentical(Bar));
+}
+
 }  // end anonymous namespace
